@@ -3,12 +3,14 @@ import { motion, AnimatePresence } from "motion/react";
 import { 
   LayoutDashboard, Users, FileText, Settings, ShieldAlert, 
   TrendingUp, Download, Plus, Search, Filter, MoreVertical, Lock, X, Camera, User as UserIcon, Building, Phone, Mail, UserCheck, ArrowRight,
-  CheckCircle, Clock, AlertTriangle, BarChart3, PieChart as PieChartIcon
+  CheckCircle, Clock, AlertTriangle, BarChart3, PieChart as PieChartIcon, Star, Trash2, Eye, LogOut
 } from "lucide-react";
 import Layout from "../components/Layout";
 import { db, handleFirestoreError, OperationType } from "../firebase";
-import { collection, onSnapshot, query, orderBy, addDoc, serverTimestamp } from "firebase/firestore";
+import { collection, onSnapshot, query, orderBy, addDoc, serverTimestamp, getDocs, writeBatch, doc, deleteDoc, updateDoc, getDoc } from "firebase/firestore";
 import { useAuth } from "../contexts/AuthContext";
+import { notificationService } from "../services/notificationService";
+import { settingsService, SMTPSettings } from "../services/settingsService";
 import * as XLSX from "xlsx";
 import { toast } from "sonner";
 import Webcam from "react-webcam";
@@ -26,12 +28,14 @@ export default function Admin() {
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showWebcam, setShowWebcam] = useState(false);
+  const [selectedLog, setSelectedLog] = useState<any>(null);
   const [newVisitor, setNewVisitor] = useState({
     fullName: "",
     companyName: "",
     phone: "",
     email: "",
     personToMeet: "",
+    hostEmail: "",
     purpose: "",
     photo: ""
   });
@@ -46,6 +50,41 @@ export default function Admin() {
       toast.success("Photo captured!");
     }
   }, [webcamRef]);
+
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [logToDelete, setLogToDelete] = useState<string | null>(null);
+
+  const handleDelete = async () => {
+    if (!logToDelete) return;
+    try {
+      await deleteDoc(doc(db, "visitors", logToDelete));
+      toast.success("Log deleted successfully");
+      setLogToDelete(null);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, `visitors/${logToDelete}`);
+    }
+  };
+
+  const handleClearLogs = async () => {
+    try {
+      const snapshot = await getDocs(collection(db, "visitors"));
+      if (snapshot.empty) {
+        toast.info("No logs to clear.");
+        setShowClearConfirm(false);
+        return;
+      }
+
+      const batch = writeBatch(db);
+      snapshot.docs.forEach((doc) => {
+        batch.delete(doc.ref);
+      });
+      await batch.commit();
+      toast.success("All visitor logs have been cleared.");
+      setShowClearConfirm(false);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, "visitors");
+    }
+  };
 
   useEffect(() => {
     if (!user) {
@@ -81,12 +120,17 @@ export default function Admin() {
       });
       toast.success("Visitor added and checked in!");
       setShowAddModal(false);
+      
+      // Notify the host
+      notificationService.notifyCheckIn(newVisitor.fullName, newVisitor.personToMeet, newVisitor.hostEmail);
+
       setNewVisitor({
         fullName: "",
         companyName: "",
         phone: "",
         email: "",
         personToMeet: "",
+        hostEmail: "",
         purpose: "",
         photo: ""
       });
@@ -168,7 +212,13 @@ export default function Admin() {
       case "overview":
         return <OverviewView logs={logs} />;
       case "logs":
-        return <LogsView logs={logs} />;
+        return (
+          <LogsView 
+            logs={logs} 
+            onViewDetails={(log) => setSelectedLog(log)} 
+            onDeleteClick={(id) => setLogToDelete(id)}
+          />
+        );
       case "employees":
         return <EmployeesView />;
       case "reports":
@@ -176,7 +226,7 @@ export default function Admin() {
       case "security":
         return <SecurityView />;
       case "settings":
-        return <SettingsView />;
+        return <SettingsView onClearClick={() => setShowClearConfirm(true)} />;
       default:
         return <OverviewView logs={logs} />;
     }
@@ -200,12 +250,6 @@ export default function Admin() {
                 label="Visitor Logs" 
                 active={activeTab === "logs"} 
                 onClick={() => setActiveTab("logs")} 
-              />
-              <SidebarItem 
-                icon={<Users className="w-5 h-5" />} 
-                label="Employee Management" 
-                active={activeTab === "employees"} 
-                onClick={() => setActiveTab("employees")} 
               />
               <SidebarItem 
                 icon={<TrendingUp className="w-5 h-5" />} 
@@ -268,6 +312,32 @@ export default function Admin() {
         onCapture={capture} 
         webcamRef={webcamRef} 
       />
+
+      <ConfirmModal 
+        isOpen={showClearConfirm}
+        onClose={() => setShowClearConfirm(false)}
+        onConfirm={handleClearLogs}
+        title="Clear All Visitor Logs"
+        message="Are you sure you want to delete ALL visitor logs? This action is permanent and cannot be undone."
+        confirmText="Clear All Logs"
+        variant="danger"
+      />
+
+      <ViewDetailsModal 
+        isOpen={!!selectedLog}
+        onClose={() => setSelectedLog(null)}
+        log={selectedLog}
+      />
+
+      <ConfirmModal 
+        isOpen={!!logToDelete}
+        onClose={() => setLogToDelete(null)}
+        onConfirm={handleDelete}
+        title="Delete Visitor Log"
+        message="Are you sure you want to delete this visitor log? This action cannot be undone."
+        confirmText="Delete Log"
+        variant="danger"
+      />
     </Layout>
   );
 }
@@ -318,6 +388,8 @@ function AddVisitorModal({ isOpen, onClose, onSubmit, formData, setFormData, onO
                   value={formData.email}
                   onChange={(e: any) => setFormData({...formData, email: e.target.value})}
                   required
+                  pattern="[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$"
+                  title="Please enter a valid email address"
                 />
                 <InputGroup 
                   label="Person to Meet" 
@@ -325,6 +397,16 @@ function AddVisitorModal({ isOpen, onClose, onSubmit, formData, setFormData, onO
                   value={formData.personToMeet}
                   onChange={(e: any) => setFormData({...formData, personToMeet: e.target.value})}
                   required
+                />
+                <InputGroup 
+                  label="Host Email Address" 
+                  icon={<Mail className="w-5 h-5" />}
+                  type="email"
+                  value={formData.hostEmail}
+                  onChange={(e: any) => setFormData({...formData, hostEmail: e.target.value})}
+                  required
+                  pattern="[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$"
+                  title="Please enter a valid host email address"
                 />
                 <InputGroup 
                   label="Purpose of Visit" 
@@ -421,18 +503,27 @@ function WebcamModal({ isOpen, onClose, onCapture, webcamRef }: any) {
 }
 
 function InputGroup({ label, icon, type = "text", ...props }: any) {
+  const isEmail = type === "email";
+  const isEmpty = !props.value;
+  
   return (
     <div className="space-y-2">
-      <label className="block text-sm font-medium text-gray-700">{label}</label>
+      <label className="block text-sm font-medium text-gray-700">
+        {label}
+        {props.required && <span className="text-red-500 ml-1">*</span>}
+      </label>
       <div className="relative">
         <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
           {icon}
         </div>
         <input
           type={type}
-          className="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-brand-coral focus:border-transparent outline-none transition-all"
+          className="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-brand-coral focus:border-transparent outline-none transition-all invalid:border-red-500 invalid:text-red-600 peer"
           {...props}
         />
+        <p className="mt-1 hidden peer-invalid:block text-xs text-red-500 ml-1">
+          {!isEmpty && isEmail ? "Please enter a valid email address." : !isEmpty ? "Invalid input." : ""}
+        </p>
       </div>
     </div>
   );
@@ -513,7 +604,35 @@ function OverviewView({ logs }: { logs: any[] }) {
   );
 }
 
-function LogsView({ logs }: { logs: any[] }) {
+function LogsView({ logs, onViewDetails, onDeleteClick }: { logs: any[], onViewDetails: (log: any) => void, onDeleteClick: (id: string) => void }) {
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+
+  const handleCheckOut = async (logId: string) => {
+    try {
+      const logRef = doc(db, "visitors", logId);
+      const logSnap = await getDoc(logRef);
+      
+      if (!logSnap.exists()) {
+        toast.error("Log not found");
+        return;
+      }
+      
+      const logData = logSnap.data();
+      
+      await updateDoc(logRef, {
+        status: "Checked-Out",
+        checkOutTime: new Date().toISOString()
+      });
+      
+      toast.success("Visitor checked out successfully");
+      
+      // Notify the host
+      notificationService.notifyCheckOut(logData.fullName, logData.personToMeet, logData.hostEmail);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `visitors/${logId}`);
+    }
+  };
+
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
       <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-white sticky top-0">
@@ -532,7 +651,7 @@ function LogsView({ logs }: { logs: any[] }) {
         </div>
       </div>
       
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto min-h-[400px]">
         <table className="w-full text-left">
           <thead>
             <tr className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider">
@@ -541,13 +660,14 @@ function LogsView({ logs }: { logs: any[] }) {
               <th className="px-6 py-4 font-semibold">Host</th>
               <th className="px-6 py-4 font-semibold">Check-In</th>
               <th className="px-6 py-4 font-semibold">Check-Out</th>
+              <th className="px-6 py-4 font-semibold">Rating</th>
               <th className="px-6 py-4 font-semibold">Status</th>
               <th className="px-6 py-4 font-semibold text-right">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {logs.map((log) => (
-              <tr key={log.id} className="hover:bg-gray-50 transition-colors">
+              <tr key={log.id} className="hover:bg-gray-50 transition-colors group">
                 <td className="px-6 py-4">
                   {log.photo ? (
                     <div className="w-10 h-10 rounded-lg overflow-hidden border border-gray-100">
@@ -559,13 +679,28 @@ function LogsView({ logs }: { logs: any[] }) {
                     </div>
                   )}
                 </td>
-                <td className="px-6 py-4 font-medium text-brand-dark">{log.fullName}</td>
+                <td className="px-6 py-4">
+                  <div className="font-medium text-brand-dark">{log.fullName}</div>
+                  {log.feedback && (
+                    <div className="text-[10px] text-gray-400 italic max-w-[200px] truncate" title={log.feedback}>
+                      "{log.feedback}"
+                    </div>
+                  )}
+                </td>
                 <td className="px-6 py-4 text-gray-600">{log.personToMeet}</td>
                 <td className="px-6 py-4 text-gray-600">
                   {log.checkInTime ? new Date(log.checkInTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "-"}
                 </td>
                 <td className="px-6 py-4 text-gray-600">
                   {log.checkOutTime ? new Date(log.checkOutTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "-"}
+                </td>
+                <td className="px-6 py-4">
+                  {log.rating ? (
+                    <div className="flex items-center gap-1 text-yellow-500">
+                      <Star className="w-3 h-3 fill-current" />
+                      <span className="text-xs font-medium">{log.rating}</span>
+                    </div>
+                  ) : "-"}
                 </td>
                 <td className="px-6 py-4">
                   <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
@@ -576,10 +711,66 @@ function LogsView({ logs }: { logs: any[] }) {
                     {log.status}
                   </span>
                 </td>
-                <td className="px-6 py-4 text-right">
-                  <button className="p-2 text-gray-400 hover:bg-gray-100 rounded-lg">
-                    <MoreVertical className="w-4 h-4" />
-                  </button>
+                <td className="px-6 py-4 text-right relative">
+                  <div className="flex justify-end">
+                    <button 
+                      onClick={() => setOpenMenuId(openMenuId === log.id ? null : log.id)}
+                      className="p-2 text-gray-400 hover:bg-gray-100 rounded-lg transition-colors"
+                    >
+                      <MoreVertical className="w-4 h-4" />
+                    </button>
+
+                    <AnimatePresence>
+                      {openMenuId === log.id && (
+                        <>
+                          <div 
+                            className="fixed inset-0 z-10" 
+                            onClick={() => setOpenMenuId(null)}
+                          />
+                          <motion.div
+                            initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                            className="absolute right-6 top-12 w-48 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-20"
+                          >
+                            <button 
+                              onClick={() => {
+                                onViewDetails(log);
+                                setOpenMenuId(null);
+                              }}
+                              className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                            >
+                              <Eye className="w-4 h-4 text-gray-400" />
+                              View Details
+                            </button>
+                            {log.status === "Checked-In" && (
+                              <button 
+                                onClick={() => {
+                                  handleCheckOut(log.id);
+                                  setOpenMenuId(null);
+                                }}
+                                className="w-full px-4 py-2 text-left text-sm text-blue-600 hover:bg-blue-50 flex items-center gap-2"
+                              >
+                                <LogOut className="w-4 h-4" />
+                                Check Out
+                              </button>
+                            )}
+                            <div className="h-px bg-gray-100 my-1" />
+                            <button 
+                              onClick={() => {
+                                onDeleteClick(log.id);
+                                setOpenMenuId(null);
+                              }}
+                              className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                              Delete Log
+                            </button>
+                          </motion.div>
+                        </>
+                      )}
+                    </AnimatePresence>
+                  </div>
                 </td>
               </tr>
             ))}
@@ -750,20 +941,311 @@ function SecurityToggle({ label, description, defaultChecked = false }: any) {
   );
 }
 
-function SettingsView() {
+function SettingsView({ onClearClick }: { onClearClick: () => void }) {
+  const [smtpSettings, setSmtpSettings] = useState<SMTPSettings>({
+    smtpHost: "",
+    smtpPort: 587,
+    smtpUser: "",
+    smtpPass: "",
+    smtpFrom: "",
+    smtpSecure: true
+  });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    const loadSettings = async () => {
+      const settings = await settingsService.getSMTPSettings();
+      if (settings) {
+        setSmtpSettings(settings);
+      }
+      setLoading(false);
+    };
+    loadSettings();
+  }, []);
+
+  const handleSaveSMTP = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      await settingsService.saveSMTPSettings(smtpSettings);
+      toast.success("SMTP settings updated successfully!");
+    } catch (error) {
+      toast.error("Failed to update SMTP settings.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center p-12 card-soft">
+        <div className="animate-spin w-6 h-6 border-2 border-brand-coral border-t-transparent rounded-full mr-3"></div>
+        <span className="text-gray-500">Loading settings...</span>
+      </div>
+    );
+  }
+
   return (
-    <div className="card-soft p-8 max-w-2xl">
-      <h3 className="text-xl font-bold text-brand-dark mb-8">General Settings</h3>
-      <div className="space-y-6">
-        <InputGroup label="Company Name" icon={<Building className="w-5 h-5" />} defaultValue="Mivada SecurePass" />
-        <InputGroup label="Support Email" icon={<Mail className="w-5 h-5" />} defaultValue="support@mivada.com" />
-        <InputGroup label="Office Address" icon={<ArrowRight className="w-5 h-5" />} defaultValue="123 Secure Way, Tech City" />
+    <div className="space-y-8 pb-24">
+      <div className="card-soft p-8 max-w-2xl">
+        <h3 className="text-xl font-bold text-brand-dark mb-8">General Settings</h3>
+        <div className="space-y-6">
+          <InputGroup label="Company Name" icon={<Building className="w-5 h-5" />} defaultValue="Mivada SecurePass" />
+          <InputGroup label="Support Email" icon={<Mail className="w-5 h-5" />} defaultValue="support@mivada.com" />
+          <InputGroup label="Office Address" icon={<ArrowRight className="w-5 h-5" />} defaultValue="123 Secure Way, Tech City" />
+          
+          <div className="pt-6">
+            <button className="btn-pill btn-dark px-8">Update Settings</button>
+          </div>
+        </div>
+      </div>
+
+      <div className="card-soft p-8 max-w-2xl">
+        <div className="flex items-center gap-3 mb-8">
+          <Mail className="w-6 h-6 text-brand-coral" />
+          <h3 className="text-xl font-bold text-brand-dark">SMTP Configuration</h3>
+        </div>
         
-        <div className="pt-6">
-          <button className="btn-pill btn-dark px-8">Update Settings</button>
+        <p className="text-sm text-gray-500 mb-8 leading-relaxed">
+          Configure your internal SMTP server to send visitor notifications using your shared mailbox. 
+          This ensures all alerts are delivered through your trusted corporate infrastructure.
+        </p>
+
+        <form onSubmit={handleSaveSMTP} className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <InputGroup 
+              label="SMTP Host" 
+              icon={<Building className="w-5 h-5" />} 
+              value={smtpSettings.smtpHost} 
+              onChange={(e: any) => setSmtpSettings({...smtpSettings, smtpHost: e.target.value})}
+              placeholder="smtp.office365.com"
+            />
+            <InputGroup 
+              label="SMTP Port" 
+              type="number"
+              icon={<Clock className="w-5 h-5" />} 
+              value={smtpSettings.smtpPort} 
+              onChange={(e: any) => setSmtpSettings({...smtpSettings, smtpPort: parseInt(e.target.value) || 0})}
+              placeholder="587"
+            />
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <InputGroup 
+              label="SMTP Username" 
+              icon={<UserIcon className="w-5 h-5" />} 
+              value={smtpSettings.smtpUser} 
+              onChange={(e: any) => setSmtpSettings({...smtpSettings, smtpUser: e.target.value})}
+              placeholder="shared-mailbox@company.com"
+            />
+            <InputGroup 
+              label="SMTP Password" 
+              type="password"
+              icon={<Lock className="w-5 h-5" />} 
+              value={smtpSettings.smtpPass} 
+              onChange={(e: any) => setSmtpSettings({...smtpSettings, smtpPass: e.target.value})}
+              placeholder="••••••••"
+            />
+          </div>
+
+          <InputGroup 
+            label="Sender Email (From)" 
+            icon={<Mail className="w-5 h-5" />} 
+            value={smtpSettings.smtpFrom} 
+            onChange={(e: any) => setSmtpSettings({...smtpSettings, smtpFrom: e.target.value})}
+            placeholder="noreply@company.com"
+          />
+          
+          <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-2xl border border-gray-100">
+            <input 
+              type="checkbox" 
+              id="smtpSecure"
+              checked={smtpSettings.smtpSecure}
+              onChange={(e) => setSmtpSettings({...smtpSettings, smtpSecure: e.target.checked})}
+              className="w-5 h-5 rounded border-gray-300 text-brand-coral focus:ring-brand-coral"
+            />
+            <label htmlFor="smtpSecure" className="text-sm font-medium text-gray-700">Use SSL/TLS (Secure Connection)</label>
+          </div>
+
+          <div className="pt-6">
+            <button 
+              type="submit" 
+              disabled={saving}
+              className="btn-pill btn-dark px-8 flex items-center gap-2"
+            >
+              {saving ? (
+                <>
+                  <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full"></div>
+                  Saving...
+                </>
+              ) : (
+                "Save SMTP Settings"
+              )}
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <div className="card-soft p-8 max-w-2xl border-red-100 bg-red-50/30">
+        <div className="flex items-center gap-3 text-red-600 mb-4">
+          <AlertTriangle className="w-6 h-6" />
+          <h3 className="text-xl font-bold">Danger Zone</h3>
+        </div>
+        <p className="text-gray-600 mb-8 text-sm">
+          The following actions are destructive and cannot be reversed. Please proceed with extreme caution.
+        </p>
+        
+        <div className="flex items-center justify-between p-4 bg-white rounded-2xl border border-red-100">
+          <div>
+            <p className="font-semibold text-brand-dark">Clear Visitor Logs</p>
+            <p className="text-xs text-gray-500">Permanently delete all visitor history and logs from the database.</p>
+          </div>
+          <button 
+            onClick={onClearClick}
+            className="btn-pill bg-red-600 text-white hover:bg-red-700 px-6 py-2 text-sm font-medium transition-colors"
+          >
+            Clear All Logs
+          </button>
         </div>
       </div>
     </div>
+  );
+}
+
+function ViewDetailsModal({ isOpen, onClose, log }: any) {
+  if (!log) return null;
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <div className="fixed inset-0 z-[130] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="bg-white rounded-3xl p-8 max-w-2xl w-full shadow-2xl overflow-hidden"
+          >
+            <div className="flex justify-between items-center mb-8">
+              <h3 className="text-2xl font-bold text-brand-dark">Visitor Details</h3>
+              <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-600"><X /></button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="space-y-6">
+                <div className="w-full aspect-square rounded-2xl overflow-hidden border border-gray-100 bg-gray-50">
+                  {log.photo ? (
+                    <img src={log.photo} alt={log.fullName} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-gray-300">
+                      <UserIcon className="w-20 h-20" />
+                    </div>
+                  )}
+                </div>
+                <div className={`inline-flex px-4 py-2 rounded-full text-sm font-bold uppercase tracking-wider ${
+                  log.status === "Checked-In" ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-600"
+                }`}>
+                  {log.status}
+                </div>
+              </div>
+
+              <div className="space-y-6">
+                <DetailItem label="Full Name" value={log.fullName} icon={<UserIcon className="w-4 h-4" />} />
+                <DetailItem label="Company" value={log.companyName} icon={<Building className="w-4 h-4" />} />
+                <DetailItem label="Phone" value={log.phone} icon={<Phone className="w-4 h-4" />} />
+                <DetailItem label="Email" value={log.email} icon={<Mail className="w-4 h-4" />} />
+                <DetailItem label="Person to Meet" value={log.personToMeet} icon={<UserCheck className="w-4 h-4" />} />
+                <DetailItem label="Host Email" value={log.hostEmail} icon={<Mail className="w-4 h-4" />} />
+                <DetailItem label="Purpose" value={log.purpose} icon={<FileText className="w-4 h-4" />} />
+                
+                <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-100">
+                  <div>
+                    <p className="text-[10px] text-gray-400 uppercase font-bold mb-1">Check-In</p>
+                    <p className="text-sm font-medium text-brand-dark">
+                      {log.checkInTime ? new Date(log.checkInTime).toLocaleString() : "-"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-gray-400 uppercase font-bold mb-1">Check-Out</p>
+                    <p className="text-sm font-medium text-brand-dark">
+                      {log.checkOutTime ? new Date(log.checkOutTime).toLocaleString() : "-"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {log.feedback && (
+              <div className="mt-8 p-6 bg-gray-50 rounded-2xl border border-gray-100">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-xs font-bold text-gray-400 uppercase">Visitor Feedback</p>
+                  <div className="flex items-center gap-1 text-yellow-500">
+                    <Star className="w-4 h-4 fill-current" />
+                    <span className="font-bold">{log.rating}</span>
+                  </div>
+                </div>
+                <p className="text-gray-600 italic">"{log.feedback}"</p>
+              </div>
+            )}
+
+            <div className="mt-8">
+              <button onClick={onClose} className="w-full btn-pill btn-dark py-3">Close</button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
+  );
+}
+
+function DetailItem({ label, value, icon }: any) {
+  return (
+    <div>
+      <p className="text-[10px] text-gray-400 uppercase font-bold mb-1 flex items-center gap-2">
+        {icon} {label}
+      </p>
+      <p className="text-brand-dark font-medium">{value || "-"}</p>
+    </div>
+  );
+}
+
+function ConfirmModal({ isOpen, onClose, onConfirm, title, message, confirmText, variant = "primary" }: any) {
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl"
+          >
+            <div className="flex items-center gap-3 mb-6">
+              <div className={`p-3 rounded-2xl ${variant === 'danger' ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'}`}>
+                {variant === 'danger' ? <AlertTriangle className="w-6 h-6" /> : <ShieldAlert className="w-6 h-6" />}
+              </div>
+              <h3 className="text-2xl font-bold text-brand-dark">{title}</h3>
+            </div>
+            
+            <p className="text-gray-600 mb-8 leading-relaxed">
+              {message}
+            </p>
+
+            <div className="flex gap-4">
+              <button onClick={onClose} className="flex-1 btn-pill btn-outline">Cancel</button>
+              <button 
+                onClick={onConfirm} 
+                className={`flex-1 btn-pill text-white font-medium ${
+                  variant === 'danger' ? 'bg-red-600 hover:bg-red-700' : 'bg-brand-dark hover:bg-black'
+                }`}
+              >
+                {confirmText}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
   );
 }
 

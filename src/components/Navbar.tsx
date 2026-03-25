@@ -19,12 +19,11 @@ export default function Navbar() {
           {/* Desktop Menu */}
           <div className="hidden md:flex items-center gap-8">
             <Link to="/" className="text-sm font-medium text-gray-600 hover:text-brand-coral transition-colors">Home</Link>
-            <Link to="/pre-register" className="text-sm font-medium text-gray-600 hover:text-brand-coral transition-colors">Pre-Register</Link>
             <Link to="/kiosk" className="text-sm font-medium text-gray-600 hover:text-brand-coral transition-colors">Kiosk</Link>
-            <Link to="/dashboard" className="text-sm font-medium text-gray-600 hover:text-brand-coral transition-colors">Employee</Link>
+            <Link to="/check-out" className="text-sm font-medium text-gray-600 hover:text-brand-coral transition-colors">Check-Out</Link>
             <Link to="/admin" className="text-sm font-medium text-gray-600 hover:text-brand-coral transition-colors">Admin</Link>
             
-            {user ? (
+            {user && (
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-2 text-sm text-gray-600">
                   <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden">
@@ -37,11 +36,6 @@ export default function Navbar() {
                   Logout
                 </button>
               </div>
-            ) : (
-              <button onClick={login} className="btn-pill btn-dark text-sm py-2 px-6 flex items-center gap-2">
-                <LogIn className="w-4 h-4" />
-                Login
-              </button>
             )}
           </div>
 
@@ -58,14 +52,11 @@ export default function Navbar() {
       {isOpen && (
         <div className="md:hidden bg-white border-b border-gray-100 py-4 px-4 space-y-4">
           <Link to="/" className="block text-base font-medium text-gray-600" onClick={() => setIsOpen(false)}>Home</Link>
-          <Link to="/pre-register" className="block text-base font-medium text-gray-600" onClick={() => setIsOpen(false)}>Pre-Register</Link>
           <Link to="/kiosk" className="block text-base font-medium text-gray-600" onClick={() => setIsOpen(false)}>Kiosk</Link>
-          <Link to="/dashboard" className="block text-base font-medium text-gray-600" onClick={() => setIsOpen(false)}>Employee</Link>
+          <Link to="/check-out" className="block text-base font-medium text-gray-600" onClick={() => setIsOpen(false)}>Check-Out</Link>
           <Link to="/admin" className="block text-base font-medium text-gray-600" onClick={() => setIsOpen(false)}>Admin</Link>
-          {user ? (
+          {user && (
             <button onClick={() => { logout(); setIsOpen(false); }} className="w-full btn-pill btn-outline text-center py-2">Logout</button>
-          ) : (
-            <button onClick={() => { login(); setIsOpen(false); }} className="w-full btn-pill btn-dark text-center py-2">Login</button>
           )}
         </div>
       )}

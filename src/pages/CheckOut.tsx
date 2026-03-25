@@ -1,30 +1,76 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
+import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { LogOut, Search, User, Clock, Star, CheckCircle2 } from "lucide-react";
+import { LogOut, Search, User, Clock, Star, CheckCircle2, ArrowLeft, Building } from "lucide-react";
 import Layout from "../components/Layout";
 import { db, handleFirestoreError, OperationType } from "../firebase";
-import { collection, query, where, getDocs, limit, updateDoc, doc } from "firebase/firestore";
+import { collection, query, where, getDocs, limit, updateDoc, doc, onSnapshot } from "firebase/firestore";
+import { notificationService } from "../services/notificationService";
 
 export default function CheckOut() {
+  const navigate = useNavigate();
   const [step, setStep] = useState<"search" | "confirm" | "feedback" | "done">("search");
   const [visitor, setVisitor] = useState<any>(null);
   const [rating, setRating] = useState(0);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(false);
+  const [activeVisitors, setActiveVisitors] = useState<any[]>([]);
+
+  useEffect(() => {
+    const q = query(
+      collection(db, "visitors"),
+      where("status", "==", "Checked-In")
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const visitors = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      setActiveVisitors(visitors);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, "visitors");
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const selectVisitor = (v: any) => {
+    setVisitor({
+      id: v.id,
+      name: v.fullName,
+      company: v.companyName || "-",
+      checkIn: v.checkInTime ? new Date(v.checkInTime).toLocaleTimeString() : "-",
+      host: v.personToMeet,
+      hostEmail: v.hostEmail
+    });
+    setStep("confirm");
+  };
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
-      // Search by name or QR ID
-      const q = query(
+      // Search by name first
+      let q = query(
         collection(db, "visitors"), 
         where("fullName", "==", searchTerm),
         where("status", "==", "Checked-In"),
         limit(1)
       );
-      const querySnapshot = await getDocs(q);
+      let querySnapshot = await getDocs(q);
+      
+      // If not found by name, try by QR ID
+      if (querySnapshot.empty) {
+        q = query(
+          collection(db, "visitors"), 
+          where("qrCodeId", "==", searchTerm),
+          where("status", "==", "Checked-In"),
+          limit(1)
+        );
+        querySnapshot = await getDocs(q);
+      }
       
       if (!querySnapshot.empty) {
         const docData = querySnapshot.docs[0].data();
@@ -33,11 +79,12 @@ export default function CheckOut() {
           name: docData.fullName,
           company: docData.companyName || "-",
           checkIn: docData.checkInTime ? new Date(docData.checkInTime).toLocaleTimeString() : "-",
-          host: docData.personToMeet
+          host: docData.personToMeet,
+          hostEmail: docData.hostEmail
         });
         setStep("confirm");
       } else {
-        toast.error("No active check-in found for this name.");
+        toast.error("No active check-in found for this name or QR ID.");
       }
     } catch (error) {
       handleFirestoreError(error, OperationType.LIST, "visitors");
@@ -53,6 +100,10 @@ export default function CheckOut() {
         status: "Checked-Out",
         checkOutTime: new Date().toISOString()
       });
+      
+      // Notify the host
+      notificationService.notifyCheckOut(visitor.name, visitor.host, visitor.hostEmail);
+      
       setStep("feedback");
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, "visitors");
@@ -93,31 +144,98 @@ export default function CheckOut() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
-                className="card-soft"
+                className="space-y-8"
               >
-                <form onSubmit={handleSearch} className="space-y-6">
-                  <div className="space-y-2">
-                    <label className="text-sm font-semibold text-gray-700 ml-1">Enter your name or QR ID</label>
-                    <div className="relative">
-                      <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-                      <input 
-                        type="text" 
-                        placeholder="e.g. John Doe"
-                        className="w-full pl-12 pr-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-coral/20 outline-none"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        required
-                      />
+                <div className="card-soft">
+                  <form onSubmit={handleSearch} className="space-y-6">
+                    <div className="space-y-2">
+                      <label className="text-sm font-semibold text-gray-700 ml-1">Search by name or QR ID</label>
+                      <div className="relative">
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                        <input 
+                          type="text" 
+                          placeholder="e.g. John Doe"
+                          className="w-full pl-12 pr-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-coral/20 outline-none"
+                          value={searchTerm}
+                          onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                      </div>
                     </div>
-                  </div>
-                  <button 
-                    type="submit" 
-                    disabled={loading}
-                    className="w-full btn-pill btn-dark text-lg flex items-center justify-center gap-2 disabled:opacity-50"
-                  >
-                    {loading ? "Searching..." : "Find My Visit"}
+                    <button 
+                      type="submit" 
+                      disabled={loading}
+                      className="w-full btn-pill btn-dark text-lg flex items-center justify-center gap-2 disabled:opacity-50"
+                    >
+                      {loading ? "Searching..." : "Find My Visit"}
+                    </button>
+                  </form>
+                </div>
+
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-brand-dark flex items-center gap-2 px-1">
+                    <User className="w-5 h-5 text-brand-coral" />
+                    Currently Checked In ({activeVisitors.length})
+                  </h3>
+                  
+                  {activeVisitors.length > 0 ? (
+                    <div className="grid grid-cols-1 gap-4">
+                      {activeVisitors
+                        .filter(v => 
+                          v.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          v.qrCodeId?.toLowerCase().includes(searchTerm.toLowerCase())
+                        )
+                        .map((v) => (
+                        <motion.div 
+                          key={v.id}
+                          layout
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          className="card-soft flex items-center justify-between p-4 hover:border-brand-coral transition-colors group"
+                        >
+                          <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center text-gray-400 group-hover:bg-brand-coral/10 group-hover:text-brand-coral transition-colors overflow-hidden">
+                              {v.photo ? (
+                                <img src={v.photo} alt={v.fullName} className="w-full h-full object-cover" />
+                              ) : (
+                                <User className="w-6 h-6" />
+                              )}
+                            </div>
+                            <div>
+                              <h4 className="font-bold text-brand-dark">{v.fullName}</h4>
+                              <div className="flex items-center gap-3 text-xs text-gray-500 mt-1">
+                                <span className="flex items-center gap-1">
+                                  <Building className="w-3 h-3" />
+                                  {v.companyName || "-"}
+                                </span>
+                                <span className="flex items-center gap-1">
+                                  <Clock className="w-3 h-3" />
+                                  {v.checkInTime ? new Date(v.checkInTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "-"}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                          <button 
+                            onClick={() => selectVisitor(v)}
+                            className="p-2.5 bg-brand-dark text-white rounded-xl shadow-sm hover:bg-brand-coral transition-colors"
+                            title="Check Out"
+                          >
+                            <LogOut className="w-5 h-5" />
+                          </button>
+                        </motion.div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="card-soft text-center py-12 text-gray-400 italic">
+                      No visitors currently checked in.
+                    </div>
+                  )}
+                </div>
+
+                <div className="text-center">
+                  <button onClick={() => navigate("/")} className="text-sm text-gray-400 hover:text-gray-600">
+                    Cancel and Return to Home
                   </button>
-                </form>
+                </div>
               </motion.div>
             )}
 
@@ -161,7 +279,10 @@ export default function CheckOut() {
                     <LogOut className="w-5 h-5" />
                     {loading ? "Checking Out..." : "Confirm Check-Out"}
                   </button>
-                  <button onClick={() => setStep("search")} className="text-sm text-gray-400 hover:text-gray-600">Not you? Search again</button>
+                  <button onClick={() => setStep("search")} className="flex items-center justify-center gap-2 text-sm text-gray-400 hover:text-gray-600">
+                    <ArrowLeft className="w-4 h-4" />
+                    Not you? Search again
+                  </button>
                 </div>
               </motion.div>
             )}
@@ -216,7 +337,7 @@ export default function CheckOut() {
                 </div>
                 <h2 className="text-2xl mb-2">Safe Travels!</h2>
                 <p className="text-gray-500 mb-8">You have been successfully checked out. We hope to see you again soon.</p>
-                <button onClick={() => setStep("search")} className="btn-pill btn-outline">Return to Home</button>
+                <button onClick={() => navigate("/")} className="btn-pill btn-outline">Return to Home</button>
               </motion.div>
             )}
           </AnimatePresence>

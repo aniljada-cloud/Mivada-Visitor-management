@@ -10,6 +10,7 @@
         "phone": { "type": "string", "description": "Phone number of the visitor." },
         "email": { "type": "string", "description": "Email address of the visitor." },
         "personToMeet": { "type": "string", "description": "Name of the employee the visitor is meeting." },
+        "hostEmail": { "type": "string", "description": "Email address of the employee the visitor is meeting." },
         "hostUid": { "type": "string", "description": "UID of the employee the visitor is meeting." },
         "purpose": { "type": "string", "description": "Purpose of the visit." },
         "photo": { "type": "string", "description": "Base64 encoded photo of the visitor." },
@@ -22,7 +23,7 @@
         "feedback": { "type": "string", "description": "Feedback text from the visitor." },
         "createdAt": { "type": "string", "format": "date-time", "description": "Registration timestamp." }
       },
-      "required": ["fullName", "email", "personToMeet", "status", "createdAt"]
+      "required": ["fullName", "email", "personToMeet", "hostEmail", "status", "createdAt"]
     },
     "Employee": {
       "title": "Employee",
@@ -35,6 +36,19 @@
         "department": { "type": "string", "description": "Department of the employee." }
       },
       "required": ["fullName", "email", "role"]
+    },
+    "Settings": {
+      "title": "Settings",
+      "description": "Global application settings.",
+      "type": "object",
+      "properties": {
+        "smtpHost": { "type": "string", "description": "SMTP server host." },
+        "smtpPort": { "type": "integer", "description": "SMTP server port." },
+        "smtpUser": { "type": "string", "description": "SMTP server username." },
+        "smtpPass": { "type": "string", "description": "SMTP server password." },
+        "smtpFrom": { "type": "string", "description": "Sender email address." },
+        "smtpSecure": { "type": "boolean", "description": "Whether to use SSL/TLS." }
+      }
     }
   },
   "firestore": {
@@ -45,6 +59,10 @@
     "/employees/{employeeId}": {
       "schema": "Employee",
       "description": "Collection of all employees."
+    },
+    "/settings/{settingId}": {
+      "schema": "Settings",
+      "description": "Global settings for the application."
     }
   }
 }

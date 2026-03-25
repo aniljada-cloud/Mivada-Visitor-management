@@ -1,17 +1,16 @@
 import React from "react";
 import { motion } from "motion/react";
 import { Link } from "react-router-dom";
-import { Shield, UserPlus, LogIn, CheckCircle, Bell, Printer } from "lucide-react";
+import { UserPlus, LogOut } from "lucide-react";
 import Layout from "../components/Layout";
-import Logo from "../components/Logo";
 
 export default function Home() {
   return (
     <Layout>
       {/* Hero Section */}
-      <section className="relative overflow-hidden bg-brand-gradient py-24 md:py-32">
+      <section className="relative overflow-hidden bg-brand-gradient py-24 md:py-32 min-h-[80vh] flex items-center">
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-20 w-full">
           <div className="text-center max-w-4xl mx-auto">
             <motion.h1 
               initial={{ opacity: 0, y: 20 }}
@@ -24,13 +23,13 @@ export default function Home() {
             <div 
               className="mt-10 flex flex-col sm:flex-row justify-center gap-4 relative z-50"
             >
-              <Link to="/pre-register" className="btn-pill btn-dark text-lg flex items-center justify-center gap-2 cursor-pointer">
+              <Link to="/kiosk" className="btn-pill btn-dark text-lg flex items-center justify-center gap-2 cursor-pointer">
                 <UserPlus className="w-5 h-5" />
-                Pre-Register Visitor
+                Visitor Check-In
               </Link>
-              <Link to="/dashboard" className="btn-pill bg-white text-brand-dark hover:bg-opacity-90 text-lg flex items-center justify-center gap-2 cursor-pointer">
-                <LogIn className="w-5 h-5" />
-                Employee Login
+              <Link to="/check-out" className="btn-pill bg-white text-brand-dark hover:bg-opacity-90 text-lg flex items-center justify-center gap-2 cursor-pointer">
+                <LogOut className="w-5 h-5" />
+                Visitor Check-Out
               </Link>
             </div>
           </div>
@@ -40,87 +39,6 @@ export default function Home() {
         <div className="absolute -bottom-24 -left-24 w-96 h-96 bg-white/10 rounded-full blur-3xl z-0"></div>
         <div className="absolute -top-24 -right-24 w-96 h-96 bg-white/10 rounded-full blur-3xl z-0"></div>
       </section>
-
-      {/* Features Section */}
-      <section className="py-24 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl text-brand-dark">Powerful Features for Modern Offices</h2>
-            <p className="mt-4 text-gray-600 max-w-2xl mx-auto">Everything you need to manage your workspace visitors efficiently and securely.</p>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            <FeatureCard 
-              icon={<CheckCircle className="w-8 h-8 text-brand-coral" />}
-              title="Digital Check-in"
-              description="Fast, paperless check-in process for visitors at your reception kiosk."
-            />
-            <FeatureCard 
-              icon={<UserPlus className="w-8 h-8 text-brand-coral" />}
-              title="Pre-Registration"
-              description="Allow visitors to fill in their details before they even arrive at the office."
-            />
-            <FeatureCard 
-              icon={<Printer className="w-8 h-8 text-brand-coral" />}
-              title="Badge Printing"
-              description="Automatically generate and print visitor badges with QR codes for tracking."
-            />
-            <FeatureCard 
-              icon={<Bell className="w-8 h-8 text-brand-coral" />}
-              title="Instant Notifications"
-              description="Notify employees immediately via email or SMS when their visitor arrives."
-            />
-          </div>
-        </div>
-      </section>
-
-      {/* How It Works Section */}
-      <section className="py-24 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl text-brand-dark">How It Works</h2>
-            <p className="mt-4 text-gray-600">A simple 3-step process for a seamless visitor experience.</p>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
-            <StepCard 
-              number="01"
-              title="Register"
-              description="Visitor pre-registers online or checks in at the reception kiosk."
-            />
-            <StepCard 
-              number="02"
-              title="Check-in"
-              description="Scan QR code or enter details. Host receives an instant notification."
-            />
-            <StepCard 
-              number="03"
-              title="Exit"
-              description="Visitor checks out easily, providing feedback on their visit."
-            />
-          </div>
-        </div>
-      </section>
     </Layout>
-  );
-}
-
-function FeatureCard({ icon, title, description }: { icon: React.ReactNode, title: string, description: string }) {
-  return (
-    <div className="card-soft hover:shadow-md transition-shadow">
-      <div className="mb-6">{icon}</div>
-      <h3 className="text-xl mb-3">{title}</h3>
-      <p className="text-gray-600 text-sm leading-relaxed">{description}</p>
-    </div>
-  );
-}
-
-function StepCard({ number, title, description }: { number: string, title: string, description: string }) {
-  return (
-    <div className="text-center">
-      <div className="text-6xl font-display font-bold text-brand-coral/10 mb-6">{number}</div>
-      <h3 className="text-2xl mb-4">{title}</h3>
-      <p className="text-gray-600 leading-relaxed">{description}</p>
-    </div>
   );
 }

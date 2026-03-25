@@ -110,6 +110,15 @@ service cloud.firestore {
         (!('department' in data) || (data.department is string && data.department.size() < 100));
     }
 
+    function isValidSettings(data) {
+      return (!('smtpHost' in data) || (data.smtpHost is string && data.smtpHost.size() < 100)) &&
+        (!('smtpPort' in data) || (data.smtpPort is int && data.smtpPort > 0 && data.smtpPort < 65536)) &&
+        (!('smtpUser' in data) || (data.smtpUser is string && data.smtpUser.size() < 100)) &&
+        (!('smtpPass' in data) || (data.smtpPass is string && data.smtpPass.size() < 100)) &&
+        (!('smtpFrom' in data) || (data.smtpFrom is string && isValidEmail(data.smtpFrom))) &&
+        (!('smtpSecure' in data) || (data.smtpSecure is bool));
+    }
+
     // ===============================================================
     // Rules
     // ===============================================================
@@ -142,6 +151,11 @@ service cloud.firestore {
       allow update: if (isAdmin() || (isOwner(employeeId) && request.resource.data.role == resource.data.role)) && isValidEmployee(request.resource.data);
       
       allow delete: if isAdmin();
+    }
+
+    match /settings/{settingId} {
+      allow read: if isAdmin();
+      allow write: if isAdmin() && isValidSettings(request.resource.data);
     }
 
     // Default deny
