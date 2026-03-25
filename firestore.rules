@@ -1,0 +1,152 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: visitors
+    // Document ID: visitorId
+    // Fields:
+    //   - fullName: string (required)
+    //   - companyName: string (optional)
+    //   - phone: string (optional)
+    //   - email: string (required)
+    //   - personToMeet: string (required)
+    //   - hostUid: string (optional)
+    //   - purpose: string (optional)
+    //   - photo: string (optional, base64)
+    //   - status: string (required, enum: Pending, Approved, Rejected, Checked-In, Checked-Out)
+    //   - checkInTime: string (optional, ISO 8601)
+    //   - checkOutTime: string (optional, ISO 8601)
+    //   - preRegistered: bool (optional)
+    //   - qrCodeId: string (optional)
+    //   - rating: int (optional)
+    //   - feedback: string (optional)
+    //
+    // Collection: employees
+    // Document ID: employeeId
+    // Fields:
+    //   - fullName: string (required)
+    //   - email: string (required)
+    //   - role: string (required, enum: admin, employee, reception)
+    //   - department: string (optional)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.role == 'admin' ||
+          (request.auth.token.email == "anil.jada@mivada.com" && request.auth.token.email_verified == true));
+    }
+
+    function isEmployee() {
+      return isAuthenticated() && 
+        (isAdmin() || get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.role in ['admin', 'employee', 'reception']);
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    function isValidEmail(email) {
+      return email is string &&
+        email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    function isValidStatus(status) {
+      return status in ['Pending', 'Approved', 'Rejected', 'Checked-In', 'Checked-Out'];
+    }
+
+    function isValidRole(role) {
+      return role in ['admin', 'employee', 'reception'];
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidVisitor(data) {
+      return hasRequiredFields(['fullName', 'email', 'personToMeet', 'status']) &&
+        data.fullName is string && data.fullName.size() > 0 && data.fullName.size() < 100 &&
+        isValidEmail(data.email) &&
+        data.personToMeet is string && data.personToMeet.size() > 0 &&
+        isValidStatus(data.status) &&
+        (!('companyName' in data) || (data.companyName is string && data.companyName.size() < 100)) &&
+        (!('phone' in data) || (data.phone is string && data.phone.size() < 20)) &&
+        (!('purpose' in data) || (data.purpose is string && data.purpose.size() < 500)) &&
+        (!('photo' in data) || (data.photo is string && data.photo.size() < 2000000)) &&
+        (!('rating' in data) || (data.rating is int && data.rating >= 1 && data.rating <= 5)) &&
+        (!('feedback' in data) || (data.feedback is string && data.feedback.size() < 1000)) &&
+        (!('qrCodeId' in data) || (data.qrCodeId is string && data.qrCodeId.size() < 50)) &&
+        (!('preRegistered' in data) || (data.preRegistered is bool)) &&
+        (!('checkInTime' in data) || (data.checkInTime is string)) &&
+        (!('checkOutTime' in data) || (data.checkOutTime is string)) &&
+        (!('createdAt' in data) || (data.createdAt is timestamp));
+    }
+
+    function isValidEmployee(data) {
+      return hasRequiredFields(['fullName', 'email', 'role']) &&
+        data.fullName is string && data.fullName.size() > 0 && data.fullName.size() < 100 &&
+        isValidEmail(data.email) &&
+        isValidRole(data.role) &&
+        (!('department' in data) || (data.department is string && data.department.size() < 100));
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /visitors/{visitorId} {
+      // Visitors can be created by anyone (pre-registration or kiosk)
+      allow create: if isValidVisitor(request.resource.data);
+      
+      // Visitors can be read by employees or by the visitor themselves if they have the ID (simulated by QR)
+      // For simplicity in this prototype, we allow reading if authenticated as employee or if it's a specific fetch
+      allow get: if isAuthenticated();
+      allow list: if isEmployee();
+      
+      // Updates:
+      // 1. Employees can update status
+      // 2. Visitors can update their own check-out info/feedback
+      allow update: if isAuthenticated() && isValidVisitor(request.resource.data) && (
+        isEmployee() || 
+        (request.resource.data.email == resource.data.email) // Simple ownership check for prototype
+      );
+      
+      allow delete: if isAdmin();
+    }
+
+    match /employees/{employeeId} {
+      allow read: if isAuthenticated();
+      
+      // Only admins can create/update employees
+      allow create: if isAdmin() && isValidEmployee(request.resource.data);
+      allow update: if (isAdmin() || (isOwner(employeeId) && request.resource.data.role == resource.data.role)) && isValidEmployee(request.resource.data);
+      
+      allow delete: if isAdmin();
+    }
+
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "entities": {
+    "Visitor": {
+      "title": "Visitor",
+      "description": "A visitor to the workspace.",
+      "type": "object",
+      "properties": {
+        "fullName": { "type": "string", "description": "Full name of the visitor." },
+        "companyName": { "type": "string", "description": "Company the visitor represents." },
+        "phone": { "type": "string", "description": "Phone number of the visitor." },
+        "email": { "type": "string", "description": "Email address of the visitor." },
+        "personToMeet": { "type": "string", "description": "Name of the employee the visitor is meeting." },
+        "hostUid": { "type": "string", "description": "UID of the employee the visitor is meeting." },
+        "purpose": { "type": "string", "description": "Purpose of the visit." },
+        "photo": { "type": "string", "description": "Base64 encoded photo of the visitor." },
+        "status": { "type": "string", "enum": ["Pending", "Approved", "Rejected", "Checked-In", "Checked-Out"], "description": "Current status of the visit." },
+        "checkInTime": { "type": "string", "format": "date-time", "description": "Time the visitor checked in." },
+        "checkOutTime": { "type": "string", "format": "date-time", "description": "Time the visitor checked out." },
+        "preRegistered": { "type": "boolean", "description": "Whether the visitor pre-registered." },
+        "qrCodeId": { "type": "string", "description": "Unique ID for the QR code." },
+        "rating": { "type": "integer", "description": "Feedback rating from the visitor." },
+        "feedback": { "type": "string", "description": "Feedback text from the visitor." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Registration timestamp." }
+      },
+      "required": ["fullName", "email", "personToMeet", "status", "createdAt"]
+    },
+    "Employee": {
+      "title": "Employee",
+      "description": "An employee of the workspace.",
+      "type": "object",
+      "properties": {
+        "fullName": { "type": "string", "description": "Full name of the employee." },
+        "email": { "type": "string", "description": "Email address of the employee." },
+        "role": { "type": "string", "enum": ["admin", "employee", "reception"], "description": "Role of the employee." },
+        "department": { "type": "string", "description": "Department of the employee." }
+      },
+      "required": ["fullName", "email", "role"]
+    }
+  },
+  "firestore": {
+    "/visitors/{visitorId}": {
+      "schema": "Visitor",
+      "description": "Collection of all visitors."
+    },
+    "/employees/{employeeId}": {
+      "schema": "Employee",
+      "description": "Collection of all employees."
+    }
+  }
+}

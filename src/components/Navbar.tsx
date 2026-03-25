@@ -1,0 +1,88 @@
+import React, { useState } from "react";
+import { Link } from "react-router-dom";
+import { Shield, Menu, X, LogIn, LogOut, User } from "lucide-react";
+import { useAuth } from "../contexts/AuthContext";
+
+export default function Navbar() {
+  const [isOpen, setIsOpen] = useState(false);
+  const { user, login, logout } = useAuth();
+
+  return (
+    <nav className="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-gray-100">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between h-16 items-center">
+          <Link to="/" className="flex items-center gap-3">
+            <div className="bg-brand-gradient p-2 rounded-lg flex items-center justify-center">
+              <img 
+                src="https://mivada.com/wp-content/uploads/2023/10/Mivada-Logo-White.png" 
+                alt="Mivada Logo" 
+                className="w-8 h-8 object-contain"
+                referrerPolicy="no-referrer"
+                onError={(e) => {
+                  // Fallback to stylized M if image fails
+                  (e.target as HTMLImageElement).style.display = 'none';
+                  (e.target as HTMLImageElement).parentElement!.innerHTML = '<span class="text-white font-bold text-xl">M</span>';
+                }}
+              />
+            </div>
+            <span className="text-xl font-display font-bold text-brand-dark tracking-tight">
+              Mivada <span className="text-brand-coral">SecurePass</span>
+            </span>
+          </Link>
+
+          {/* Desktop Menu */}
+          <div className="hidden md:flex items-center gap-8">
+            <Link to="/" className="text-sm font-medium text-gray-600 hover:text-brand-coral transition-colors">Home</Link>
+            <Link to="/pre-register" className="text-sm font-medium text-gray-600 hover:text-brand-coral transition-colors">Pre-Register</Link>
+            <Link to="/kiosk" className="text-sm font-medium text-gray-600 hover:text-brand-coral transition-colors">Kiosk</Link>
+            <Link to="/dashboard" className="text-sm font-medium text-gray-600 hover:text-brand-coral transition-colors">Employee</Link>
+            <Link to="/admin" className="text-sm font-medium text-gray-600 hover:text-brand-coral transition-colors">Admin</Link>
+            
+            {user ? (
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden">
+                    {user.photoURL ? <img src={user.photoURL} alt={user.displayName || ""} /> : <User className="w-4 h-4" />}
+                  </div>
+                  <span className="hidden lg:inline">{user.displayName}</span>
+                </div>
+                <button onClick={logout} className="btn-pill btn-outline text-sm py-2 px-4 flex items-center gap-2">
+                  <LogOut className="w-4 h-4" />
+                  Logout
+                </button>
+              </div>
+            ) : (
+              <button onClick={login} className="btn-pill btn-dark text-sm py-2 px-6 flex items-center gap-2">
+                <LogIn className="w-4 h-4" />
+                Login
+              </button>
+            )}
+          </div>
+
+          {/* Mobile Menu Button */}
+          <div className="md:hidden">
+            <button onClick={() => setIsOpen(!isOpen)} className="p-2 text-gray-600">
+              {isOpen ? <X /> : <Menu />}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Mobile Menu */}
+      {isOpen && (
+        <div className="md:hidden bg-white border-b border-gray-100 py-4 px-4 space-y-4">
+          <Link to="/" className="block text-base font-medium text-gray-600" onClick={() => setIsOpen(false)}>Home</Link>
+          <Link to="/pre-register" className="block text-base font-medium text-gray-600" onClick={() => setIsOpen(false)}>Pre-Register</Link>
+          <Link to="/kiosk" className="block text-base font-medium text-gray-600" onClick={() => setIsOpen(false)}>Kiosk</Link>
+          <Link to="/dashboard" className="block text-base font-medium text-gray-600" onClick={() => setIsOpen(false)}>Employee</Link>
+          <Link to="/admin" className="block text-base font-medium text-gray-600" onClick={() => setIsOpen(false)}>Admin</Link>
+          {user ? (
+            <button onClick={() => { logout(); setIsOpen(false); }} className="w-full btn-pill btn-outline text-center py-2">Logout</button>
+          ) : (
+            <button onClick={() => { login(); setIsOpen(false); }} className="w-full btn-pill btn-dark text-center py-2">Login</button>
+          )}
+        </div>
+      )}
+    </nav>
+  );
+}

@@ -1,0 +1,5 @@
+{
+  "name": "Mivada SecurePass",
+  "description": "Secure workspace visitor management system for Mivada, featuring pre-registration, kiosk check-in, and employee dashboard.",
+  "requestFramePermissions": ["camera"]
+}
