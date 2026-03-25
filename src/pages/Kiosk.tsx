@@ -4,6 +4,7 @@ import Webcam from "react-webcam";
 import { toast } from "sonner";
 import { Camera, QrCode, User, Building, Phone, Mail, UserCheck, ArrowRight, CheckCircle2, Printer, X } from "lucide-react";
 import Layout from "../components/Layout";
+import Logo from "../components/Logo";
 import { db, handleFirestoreError, OperationType } from "../firebase";
 import { collection, addDoc, serverTimestamp, query, where, getDocs, limit, updateDoc, doc } from "firebase/firestore";
 
@@ -234,7 +235,11 @@ export default function Kiosk() {
                   className="max-w-md mx-auto"
                 >
                   <div className="bg-white rounded-3xl shadow-2xl overflow-hidden border border-gray-100">
-                    <div className="bg-brand-gradient p-6 text-white text-center">
+                    <div className="bg-brand-gradient p-6 text-white text-center relative overflow-hidden">
+                      <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full -mr-8 -mt-8 blur-2xl"></div>
+                      <div className="flex items-center justify-center gap-2 mb-4">
+                        <Logo variant="light" />
+                      </div>
                       <h3 className="text-xl font-display font-bold">VISITOR PASS</h3>
                       <p className="text-sm opacity-90">SecurePass Workspace</p>
                     </div>

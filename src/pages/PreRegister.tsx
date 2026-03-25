@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import Webcam from "react-webcam";
 import { User, Building, Phone, Mail, UserCheck, Calendar, Clock, ArrowRight, CheckCircle2, Camera, X, RotateCcw } from "lucide-react";
 import Layout from "../components/Layout";
+import Logo from "../components/Logo";
 import { db, handleFirestoreError, OperationType } from "../firebase";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 
@@ -202,6 +203,9 @@ export default function PreRegister() {
               </form>
             ) : (
               <div className="text-center py-8">
+                <div className="flex justify-center mb-8">
+                  <Logo />
+                </div>
                 <div className="flex justify-center mb-6">
                   <div className="bg-green-100 p-4 rounded-full">
                     <CheckCircle2 className="w-12 h-12 text-green-600" />

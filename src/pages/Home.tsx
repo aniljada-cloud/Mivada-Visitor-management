@@ -3,6 +3,7 @@ import { motion } from "motion/react";
 import { Link } from "react-router-dom";
 import { Shield, UserPlus, LogIn, CheckCircle, Bell, Printer } from "lucide-react";
 import Layout from "../components/Layout";
+import Logo from "../components/Logo";
 
 export default function Home() {
   return (
@@ -10,7 +11,7 @@ export default function Home() {
       {/* Hero Section */}
       <section className="relative overflow-hidden bg-brand-gradient py-24 md:py-32">
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-20">
           <div className="text-center max-w-4xl mx-auto">
             <motion.h1 
               initial={{ opacity: 0, y: 20 }}
@@ -20,35 +21,24 @@ export default function Home() {
             >
               Smart Visitor Management for Secure Workspaces
             </motion.h1>
-            <motion.p 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.2 }}
-              className="mt-6 text-xl text-white/90 font-medium"
+            <div 
+              className="mt-10 flex flex-col sm:flex-row justify-center gap-4 relative z-50"
             >
-              Streamline your reception, enhance security, and provide a professional first impression for every visitor.
-            </motion.p>
-            <motion.div 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.4 }}
-              className="mt-10 flex flex-col sm:flex-row justify-center gap-4"
-            >
-              <Link to="/pre-register" className="btn-pill btn-dark text-lg flex items-center justify-center gap-2">
+              <Link to="/pre-register" className="btn-pill btn-dark text-lg flex items-center justify-center gap-2 cursor-pointer">
                 <UserPlus className="w-5 h-5" />
                 Pre-Register Visitor
               </Link>
-              <Link to="/dashboard" className="btn-pill bg-white text-brand-dark hover:bg-opacity-90 text-lg flex items-center justify-center gap-2">
+              <Link to="/dashboard" className="btn-pill bg-white text-brand-dark hover:bg-opacity-90 text-lg flex items-center justify-center gap-2 cursor-pointer">
                 <LogIn className="w-5 h-5" />
                 Employee Login
               </Link>
-            </motion.div>
+            </div>
           </div>
         </div>
         
         {/* Abstract Shapes */}
-        <div className="absolute -bottom-24 -left-24 w-96 h-96 bg-white/10 rounded-full blur-3xl"></div>
-        <div className="absolute -top-24 -right-24 w-96 h-96 bg-white/10 rounded-full blur-3xl"></div>
+        <div className="absolute -bottom-24 -left-24 w-96 h-96 bg-white/10 rounded-full blur-3xl z-0"></div>
+        <div className="absolute -top-24 -right-24 w-96 h-96 bg-white/10 rounded-full blur-3xl z-0"></div>
       </section>
 
       {/* Features Section */}
@@ -108,21 +98,6 @@ export default function Home() {
               title="Exit"
               description="Visitor checks out easily, providing feedback on their visit."
             />
-          </div>
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="py-20">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="bg-brand-dark rounded-3xl p-12 text-center text-white relative overflow-hidden">
-            <div className="absolute inset-0 bg-brand-gradient opacity-10"></div>
-            <h2 className="text-3xl md:text-4xl mb-6 relative z-10">Ready to secure your workspace?</h2>
-            <p className="text-gray-400 mb-10 text-lg relative z-10">Join hundreds of companies using Mivada SecurePass for smarter visitor management.</p>
-            <div className="flex flex-col sm:flex-row justify-center gap-4 relative z-10">
-              <Link to="/admin" className="btn-pill bg-white text-brand-dark hover:bg-gray-100">Get Started Now</Link>
-              <Link to="/kiosk" className="btn-pill border border-white/20 hover:bg-white/10">Try Kiosk Mode</Link>
-            </div>
           </div>
         </div>
       </section>

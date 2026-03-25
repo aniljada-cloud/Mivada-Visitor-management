@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { Shield, Menu, X, LogIn, LogOut, User } from "lucide-react";
+import { Menu, X, LogIn, LogOut, User } from "lucide-react";
+import Logo from "./Logo";
 import { useAuth } from "../contexts/AuthContext";
 
 export default function Navbar() {
@@ -11,23 +12,8 @@ export default function Navbar() {
     <nav className="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-gray-100">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16 items-center">
-          <Link to="/" className="flex items-center gap-3">
-            <div className="bg-brand-gradient p-2 rounded-lg flex items-center justify-center">
-              <img 
-                src="https://mivada.com/wp-content/uploads/2023/10/Mivada-Logo-White.png" 
-                alt="Mivada Logo" 
-                className="w-8 h-8 object-contain"
-                referrerPolicy="no-referrer"
-                onError={(e) => {
-                  // Fallback to stylized M if image fails
-                  (e.target as HTMLImageElement).style.display = 'none';
-                  (e.target as HTMLImageElement).parentElement!.innerHTML = '<span class="text-white font-bold text-xl">M</span>';
-                }}
-              />
-            </div>
-            <span className="text-xl font-display font-bold text-brand-dark tracking-tight">
-              Mivada <span className="text-brand-coral">SecurePass</span>
-            </span>
+          <Link to="/" className="flex items-center gap-3 group">
+            <Logo />
           </Link>
 
           {/* Desktop Menu */}
