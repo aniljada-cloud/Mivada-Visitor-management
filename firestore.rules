@@ -84,15 +84,16 @@ service cloud.firestore {
     // ===============================================================
 
     function isValidVisitor(data) {
-      return hasRequiredFields(['fullName', 'email', 'personToMeet', 'status']) &&
+      return hasRequiredFields(['fullName', 'email', 'personToMeet', 'hostEmail', 'status']) &&
         data.fullName is string && data.fullName.size() > 0 && data.fullName.size() < 100 &&
         isValidEmail(data.email) &&
         data.personToMeet is string && data.personToMeet.size() > 0 &&
+        data.hostEmail is string && isValidEmail(data.hostEmail) &&
         isValidStatus(data.status) &&
         (!('companyName' in data) || (data.companyName is string && data.companyName.size() < 100)) &&
         (!('phone' in data) || (data.phone is string && data.phone.size() < 20)) &&
         (!('purpose' in data) || (data.purpose is string && data.purpose.size() < 500)) &&
-        (!('photo' in data) || (data.photo is string && data.photo.size() < 2000000)) &&
+        (!('photo' in data) || (data.photo is string && data.photo.size() < 5000000)) &&
         (!('rating' in data) || (data.rating is int && data.rating >= 1 && data.rating <= 5)) &&
         (!('feedback' in data) || (data.feedback is string && data.feedback.size() < 1000)) &&
         (!('qrCodeId' in data) || (data.qrCodeId is string && data.qrCodeId.size() < 50)) &&
@@ -127,17 +128,16 @@ service cloud.firestore {
       // Visitors can be created by anyone (pre-registration or kiosk)
       allow create: if isValidVisitor(request.resource.data);
       
-      // Visitors can be read by employees or by the visitor themselves if they have the ID (simulated by QR)
-      // For simplicity in this prototype, we allow reading if authenticated as employee or if it's a specific fetch
-      allow get: if isAuthenticated();
-      allow list: if isEmployee();
+      // Visitors can be read by anyone at the kiosk (to find themselves for checkout)
+      allow get: if true;
+      allow list: if true;
       
       // Updates:
       // 1. Employees can update status
-      // 2. Visitors can update their own check-out info/feedback
-      allow update: if isAuthenticated() && isValidVisitor(request.resource.data) && (
+      // 2. Visitors can update their own check-in/check-out info/feedback
+      allow update: if isValidVisitor(request.resource.data) && (
         isEmployee() || 
-        (request.resource.data.email == resource.data.email) // Simple ownership check for prototype
+        (request.resource.data.email == resource.data.email)
       );
       
       allow delete: if isAdmin();

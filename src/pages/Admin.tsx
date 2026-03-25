@@ -582,7 +582,7 @@ function OverviewView({ logs }: { logs: any[] }) {
         <div className="card-soft p-6">
           <h3 className="text-lg font-bold text-brand-dark mb-6">Visitor Traffic</h3>
           <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
               <BarChart data={[
                 { name: 'Mon', count: 12 },
                 { name: 'Tue', count: 18 },
@@ -867,7 +867,7 @@ function ReportsView({ logs }: { logs: any[] }) {
         <div className="card-soft p-6">
           <h3 className="text-lg font-bold text-brand-dark mb-6">Monthly Visitor Trends</h3>
           <div className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
               <LineChart data={data}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#9ca3af' }} />
@@ -882,7 +882,7 @@ function ReportsView({ logs }: { logs: any[] }) {
         <div className="card-soft p-6">
           <h3 className="text-lg font-bold text-brand-dark mb-6">Purpose of Visit</h3>
           <div className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
               <PieChart>
                 <Pie
                   data={pieData}

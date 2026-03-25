@@ -266,7 +266,10 @@ export default function CheckOut() {
                       <User className="w-4 h-4" />
                       <span className="text-sm">Host:</span>
                     </div>
-                    <span className="font-semibold">{visitor.host}</span>
+                    <div className="text-right">
+                      <p className="font-semibold">{visitor.host}</p>
+                      <p className="text-xs text-gray-400">{visitor.hostEmail}</p>
+                    </div>
                   </div>
                 </div>
 

@@ -70,13 +70,27 @@ export default function Kiosk() {
     try {
       if (visitorId) {
         await updateDoc(doc(db, "visitors", visitorId), {
-          ...visitorData,
+          fullName: visitorData.fullName,
+          companyName: visitorData.companyName,
+          phone: visitorData.phone,
+          email: visitorData.email,
+          personToMeet: visitorData.personToMeet,
+          hostEmail: visitorData.hostEmail,
+          purpose: visitorData.purpose,
+          photo: visitorData.photo,
           status: "Checked-In",
           checkInTime: new Date().toISOString()
         });
       } else {
         const docRef = await addDoc(collection(db, "visitors"), {
-          ...visitorData,
+          fullName: visitorData.fullName,
+          companyName: visitorData.companyName,
+          phone: visitorData.phone,
+          email: visitorData.email,
+          personToMeet: visitorData.personToMeet,
+          hostEmail: visitorData.hostEmail,
+          purpose: visitorData.purpose,
+          photo: visitorData.photo,
           status: "Checked-In",
           checkInTime: new Date().toISOString(),
           preRegistered: false,
@@ -233,19 +247,31 @@ export default function Kiosk() {
                       <h2 className="text-2xl font-bold mb-1">{visitorData.fullName}</h2>
                       <p className="text-gray-500 mb-6">{visitorData.companyName}</p>
                       
-                      <div className="bg-gray-50 rounded-2xl p-4 mb-8 text-left space-y-2">
+                      <div className="bg-gray-50 rounded-2xl p-4 mb-8 text-left space-y-3">
                         <div className="flex justify-between text-sm">
                           <span className="text-gray-400">Host:</span>
                           <span className="font-semibold">{visitorData.personToMeet}</span>
                         </div>
                         <div className="flex justify-between text-sm">
-                          <span className="text-gray-400">Date:</span>
-                          <span className="font-semibold">{new Date().toLocaleDateString()}</span>
+                          <span className="text-gray-400">Purpose:</span>
+                          <span className="font-semibold">{visitorData.purpose}</span>
                         </div>
-                      </div>
-
-                      <div className="flex justify-center mb-8">
-                        <QrCode className="w-16 h-16 text-gray-300" />
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-400">Phone:</span>
+                          <span className="font-semibold">{visitorData.phone}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-400">Email:</span>
+                          <span className="font-semibold truncate max-w-[180px]">{visitorData.email}</span>
+                        </div>
+                        <div className="flex justify-between text-sm border-t border-gray-200 pt-2 mt-2">
+                          <span className="text-gray-400">Date:</span>
+                          <span className="font-semibold">{visitorData.date}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-400">Time:</span>
+                          <span className="font-semibold">{visitorData.time}</span>
+                        </div>
                       </div>
 
                       <div className="flex flex-col gap-3">
